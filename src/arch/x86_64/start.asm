@@ -1,13 +1,3 @@
-
-; Copyright (c) 2010-2016, Stefan Lankes, RWTH Aachen University
-; All rights reserved.
-;
-;
-; Licensed under the Apache License, Version 2.0, <LICENSE-APACHE or
-; http://apache.org/licenses/LICENSE-2.0> or the MIT license <LICENSE-MIT or
-; http://opensource.org/licenses/MIT>, at your option. This file may not be
-; copied, modified, or distributed except according to those terms.
-
 ; This is the kernel's entry point. We could either call main here,
 ; or we can use this to setup the stack or other nice stuff, like
 ; perhaps setting up the GDT and segments. Please note that interrupts
@@ -101,7 +91,7 @@ L0: cmp ecx, ebx
     and eax, 0xFFFFF000       ; page align lower half
     mov edi, eax
     shr edi, 9                ; (edi >> 12) * 8 (index for boot_pgt)
-    add edi, boot_pgt
+    add edi, boot_pgt1
     or eax, 0x3               ; set present and writable bits
     mov DWORD [edi], eax
     add ecx, 0x1000
@@ -158,7 +148,7 @@ L1:
     ; Set CR4
     mov eax, cr4
     and eax, 0xfffbf9ff     ; disable SSE
-    ;or eax, (1 << 7)        ; enable PGE
+    ;or eax, (1 << 7)       ; enable PGE
     mov cr4, eax
 
     ; Set CR0 (PM-bit is already set)
@@ -221,9 +211,12 @@ boot_pdpt:
     DQ boot_pgd + 0x3   ; PG_PRESENT | PG_RW
     times 511 DQ 0      ; PAGE_MAP_ENTRIES - 1
 boot_pgd:
-    DQ boot_pgt + 0x3   ; PG_PRESENT | PG_RW
-    times 511 DQ 0      ; PAGE_MAP_ENTRIES - 1
-boot_pgt:
+    DQ boot_pgt1 + 0x3  ; PG_PRESENT | PG_RW
+    DQ boot_pgt2 + 0x3  ; PG_PRESENT | PG_RW
+    times 510 DQ 0      ; PAGE_MAP_ENTRIES - 1
+boot_pgt1:
+    times 512 DQ 0
+boot_pgt2:
     times 512 DQ 0
 
 ; add some hints to the ELF file

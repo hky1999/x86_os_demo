@@ -3,7 +3,15 @@ MACHINE ?= qemu
 PROFILE ?= debug
 
 build: 
-	cargo build --lib --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc
+	cargo build --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc
+	objcopy -O elf32-i386 target/${ARCH}${MACHINE}/$(PROFILE)/x86_demo
+
+emu: build
+	qemu-system-x86_64 \
+    	-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
+    	-smp 1 -m 64M \
+    	-display none -serial stdio \
+    	-kernel target/${ARCH}${MACHINE}/$(PROFILE)/x86_demo
 
 clean:
 	-cargo clean

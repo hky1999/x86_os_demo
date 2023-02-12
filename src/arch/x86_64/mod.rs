@@ -7,15 +7,7 @@
 
 use uart_16550::SerialPort;
 
-extern "C" {
-	static mb_info: usize;
-}
-
-
-const SERIAL_PORT_ADDRESS: u16 = 0x3F8;
-const SERIAL_PORT_BAUDRATE: u32 = 115200;
-
-core::arch::global_asm!(include_str!("start.asm"));
+// core::arch::global_asm!(include_str!("start.asm"));
 
 const SERIAL_IO_PORT: u16 = 0x3F8;
 
