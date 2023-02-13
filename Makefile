@@ -3,7 +3,7 @@ MACHINE ?= qemu
 PROFILE ?= debug
 
 build: 
-	cargo build --target ${ARCH}${MACHINE}.json -Z build-std=core,alloc
+	cargo build -Z build-std=core,alloc
 	objcopy -O elf32-i386 target/${ARCH}${MACHINE}/$(PROFILE)/x86_demo
 
 emu: build

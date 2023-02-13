@@ -9,9 +9,6 @@ mod macros;
 mod arch;
 mod console;
 mod logger;
-mod string;
-
-pub use string::*;
 
 #[macro_use]
 extern crate log;
@@ -30,7 +27,7 @@ pub unsafe extern "C" fn loader_main() {
     logger::init();
 
     info!(
-        "Loader: [{:#x} - {:#x}]",
+        "Hello, Loader: [{:#x} - {:#x}]",
         &kernel_start as *const u8 as usize, &kernel_end as *const u8 as usize
     );
     loop{}
