@@ -7,12 +7,19 @@
 
 use uart_16550::SerialPort;
 
-// core::arch::global_asm!(include_str!("start.asm"));
+mod interrupts;
+mod gdt;
 
 const SERIAL_IO_PORT: u16 = 0x3F8;
 
 // VARIABLES
 static mut COM1: SerialPort = unsafe { SerialPort::new(SERIAL_IO_PORT) };
+
+pub fn init() {
+	message_output_init();
+	gdt::init();
+	interrupts::init_idt();
+}
 
 // FUNCTIONS
 pub fn message_output_init() {
