@@ -3,20 +3,20 @@ MACHINE ?= qemu
 PROFILE ?= debug
 
 build: 
-	cargo build -Z build-std=core,alloc
-	objcopy -O elf32-i386 target/${ARCH}${MACHINE}/$(PROFILE)/x86_demo
+	cargo bootimage
 
 emu: build
 	qemu-system-x86_64 \
-    	-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
-    	-smp 1 -m 64M -display none -serial stdio \
-    	-kernel target/${ARCH}${MACHINE}/$(PROFILE)/x86_demo -s
+		-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
+		-drive format=raw,file=target/x86_64qemu/debug/bootimage-x86_demo.bin \
+		-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+		-smp 1 -m 64M -display none -serial stdio -s
 
 debug: build
 	qemu-system-x86_64 \
-    	-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
-    	-smp 1 -m 64M -display none -serial stdio \
-    	-kernel target/${ARCH}${MACHINE}/$(PROFILE)/x86_demo -s -S
+		-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
+		-drive format=raw,file=target/x86_64qemu/debug/bootimage-x86_demo.bin \
+		-smp 1 -m 64M -display none -serial stdio -s -S
 
 clean:
 	-cargo clean
