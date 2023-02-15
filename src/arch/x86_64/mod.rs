@@ -10,22 +10,21 @@
 mod interrupts;
 mod gdt;
 mod memory;
-mod serial;
-
-pub use serial::output_message_byte;
 
 use bootloader::{BootInfo, entry_point};
 
 entry_point!(entry);
 
 fn entry(boot_info: &'static BootInfo) -> ! {
-	println!("x86 arch init... \n{:#?}", boot_info);
-	
-    serial::message_output_init();
+	// println!("x86 arch init... \n{:#?}", boot_info);
+	crate::drivers::serial::message_output_init();
 	gdt::init();
 	interrupts::init_idt();
+	unsafe { crate::drivers::pic::PICS.lock().initialize() };
+    x86_64::instructions::interrupts::enable();
 
-	use memory::{self, BootInfoFrameAllocator};
+
+	use memory::BootInfoFrameAllocator;
     use x86_64::{structures::paging::Page, VirtAddr};
 
 	let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);

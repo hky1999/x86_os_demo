@@ -10,6 +10,7 @@ mod macros;
 mod arch;
 mod console;
 mod logger;
+mod drivers;
 
 #[macro_use]
 extern crate log;
@@ -20,9 +21,6 @@ fn loader_main() -> ! {
     logger::init();
 
     info!("hello x86");
-
-    let ptr = 0xdeadbeaf as *mut u32;
-    unsafe { *ptr = 42; }
 
     arch::hlt_loop();
 }
