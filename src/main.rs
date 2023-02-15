@@ -11,9 +11,12 @@ mod arch;
 mod console;
 mod logger;
 mod drivers;
+mod heap;
 
 #[macro_use]
 extern crate log;
+
+extern crate alloc;
 
 use core::panic::PanicInfo;
 
