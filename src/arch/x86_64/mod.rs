@@ -9,12 +9,13 @@ mod gdt;
 mod interrupts;
 mod memory;
 
-use bootloader::{entry_point, BootInfo};
+use bootloader::BootInfo;
 
-entry_point!(entry);
-
-fn entry(boot_info: &'static BootInfo) -> ! {
-    // println!("x86 arch init... \n{:#?}", boot_info);
+#[no_mangle]
+#[link_section = ".text.start"]
+pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
+    println!("x86 arch init... ");
+    loop{}
     crate::drivers::serial::message_output_init();
     gdt::init();
     interrupts::init_idt();
