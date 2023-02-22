@@ -24,24 +24,28 @@ QEMU := qemu-system-$(ARCH)
 
 QEMU_CMD := ${QEMU} \
 	-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
-	-smp 1 -m 4G
+	-smp 4 -m 4G
 
 ifeq ($(ARCH), x86_64)
 QEMU_CMD += \
 	-drive if=pflash,format=raw,readonly,file=$(OVMF) \
 	-drive format=raw,file=fat:rw:$(ESP) \
 	-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
+	-drive format=qcow2,file=disk.qcow2,media=disk,cache=writeback,id=sfsimg,if=none \
+	-device ahci,id=ahci0 \
+	-device ide-hd,drive=sfsimg,bus=ahci0.0 \
 	-serial stdio -s -display none
 endif
 
-${KERNEL}:
-	cargo build $(CARGO_FLAGS)
-
-build: ${KERNEL}
-	# cargo bootimage
-	objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
+bootloader:
 ifeq ($(ARCH), x86_64)
 	cd ${RBOOT_DIR} && make build
+endif
+	
+build: ${KERNEL} bootloader
+	cargo build $(CARGO_FLAGS)
+	objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
+ifeq ($(ARCH), x86_64)
 	mkdir -p $(ESP)/EFI/Demo $(ESP)/EFI/Boot
 	cp ${RBOOT_DIR}/target/x86_64-unknown-uefi/$(PROFILE)/rboot.efi $(ESP)/EFI/Boot/BootX64.efi
 	cp ${RBOOT_DIR}/rboot.conf $(ESP)/EFI/Boot/rboot.conf
@@ -50,17 +54,9 @@ endif
 
 emu: build
 	${QEMU_CMD}
-	# qemu-system-x86_64 \
-	# 	-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
-	# 	-drive format=raw,file=target/x86_64qemu/debug/bootimage-x86_demo.bin \
-	# 	-device isa-debug-exit,iobase=0xf4,iosize=0x04 \
-	# 	-smp 1 -m 64M -display none -serial stdio -s
 
 debug: build
-	qemu-system-x86_64 \
-		-cpu qemu64,apic,fsgsbase,fxsr,rdrand,rdtscp,xsave,xsaveopt \
-		-drive format=raw,file=target/x86_64qemu/debug/bootimage-x86_demo.bin \
-		-smp 1 -m 64M -display none -serial stdio -s -S
+	${QEMU_CMD} -S
 
 bootloader: $(kernel)
 ifeq ($(ARCH), x86_64)

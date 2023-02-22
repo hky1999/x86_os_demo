@@ -5,56 +5,45 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
+mod cpu;
 mod gdt;
 mod interrupts;
-mod memory;
+// mod memory;
 
-use bootloader::BootInfo;
+use rboot::BootInfo;
 
 #[no_mangle]
 #[link_section = ".text.start"]
 pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
-    println!("x86 arch init... ");
-    loop{}
     crate::drivers::serial::message_output_init();
+
+    let cpu_id = cpu::id();
+    println!("Hello world! from CPU {}!", cpu_id);
+
     gdt::init();
     interrupts::init_idt();
     unsafe { crate::drivers::pic::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
 
-    use memory::BootInfoFrameAllocator;
-    use x86_64::VirtAddr;
+    crate::heap::init_heap();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
+    // check BootInfo from bootloader
+    // println!("{:#x?}", boot_info);
+    const PHYSICAL_MEMORY_OFFSET: usize = 0xffff8000_00000000;
+    assert_eq!(
+        boot_info.physical_memory_offset as usize,
+        PHYSICAL_MEMORY_OFFSET
+    );
 
-    crate::heap::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
+    println!("memory_map: size {}", boot_info.memory_map.len());
 
-    use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
-    // allocate a number on the heap
-    let heap_value = Box::new(41);
-    println!("heap_value at {:p}", heap_value);
-
-    // create a dynamically sized vector
-    let mut vec = Vec::new();
-    for i in 0..500 {
-        vec.push(i);
+    use rboot::MemoryType;
+    for region in boot_info.memory_map.iter() {
+        println!(
+            "type {:#?} p 0x{} v 0x{} c {}",
+            region.ty, region.phys_start, region.virt_start, region.page_count
+        );
     }
-    println!("vec at {:p}", vec.as_slice());
-
-    // create a reference counted vector -> will be freed when count reaches 0
-    let reference_counted = Rc::new(vec![1, 2, 3]);
-    let cloned_reference = reference_counted.clone();
-    println!(
-        "current reference count is {}",
-        Rc::strong_count(&cloned_reference)
-    );
-    core::mem::drop(reference_counted);
-    println!(
-        "reference count is {} now",
-        Rc::strong_count(&cloned_reference)
-    );
 
     crate::loader_main();
 }
