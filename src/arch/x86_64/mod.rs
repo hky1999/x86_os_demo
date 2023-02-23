@@ -5,57 +5,54 @@
 // http://opensource.org/licenses/MIT>, at your option. This file may not be
 // copied, modified, or distributed except according to those terms.
 
+mod cpu;
 mod gdt;
 mod interrupts;
-mod memory;
+// mod memory;
 
-use bootloader::{entry_point, BootInfo};
+use rboot::BootInfo;
 
-entry_point!(entry);
-
-fn entry(boot_info: &'static BootInfo) -> ! {
-    // println!("x86 arch init... \n{:#?}", boot_info);
+#[no_mangle]
+#[link_section = ".text.start"]
+pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
     crate::drivers::serial::message_output_init();
+
+    let cpu_id = cpu::id();
+    println!("Hello world! from CPU {}!", cpu_id);
+
     gdt::init();
     interrupts::init_idt();
     unsafe { crate::drivers::pic::PICS.lock().initialize() };
     x86_64::instructions::interrupts::enable();
 
-    use memory::BootInfoFrameAllocator;
-    use x86_64::VirtAddr;
+    crate::heap::init_heap();
 
-    let phys_mem_offset = VirtAddr::new(boot_info.physical_memory_offset);
-    let mut mapper = unsafe { memory::init(phys_mem_offset) };
-    let mut frame_allocator = unsafe { BootInfoFrameAllocator::init(&boot_info.memory_map) };
-
-    crate::heap::init_heap(&mut mapper, &mut frame_allocator).expect("heap initialization failed");
-
-    use alloc::{boxed::Box, rc::Rc, vec, vec::Vec};
-    // allocate a number on the heap
-    let heap_value = Box::new(41);
-    println!("heap_value at {:p}", heap_value);
-
-    // create a dynamically sized vector
-    let mut vec = Vec::new();
-    for i in 0..500 {
-        vec.push(i);
-    }
-    println!("vec at {:p}", vec.as_slice());
-
-    // create a reference counted vector -> will be freed when count reaches 0
-    let reference_counted = Rc::new(vec![1, 2, 3]);
-    let cloned_reference = reference_counted.clone();
-    println!(
-        "current reference count is {}",
-        Rc::strong_count(&cloned_reference)
+    // check BootInfo from bootloader
+    // println!("{:#x?}", boot_info);
+    const PHYSICAL_MEMORY_OFFSET: usize = 0xffff8000_00000000;
+    assert_eq!(
+        boot_info.physical_memory_offset as usize,
+        PHYSICAL_MEMORY_OFFSET
     );
-    core::mem::drop(reference_counted);
-    println!(
-        "reference count is {} now",
-        Rc::strong_count(&cloned_reference)
-    );
+
+    dump_boot_info_memory_layout(boot_info);
 
     crate::loader_main();
+}
+
+pub fn dump_boot_info_memory_layout(boot_info: &'static BootInfo) {
+    println!("Dump boot_info memory layout:");
+    for (idx, m) in boot_info.memory_map.into_iter().enumerate() {
+        println!(
+            "[{:>2}] [{:#x}-{:#x}] {:?} {:#x} {}",
+            idx,
+            m.phys_start,
+            m.phys_start + m.page_count * 0x1000,
+            m.ty,
+            m.page_count * 0x1000,
+            m.page_count
+        );
+    }
 }
 
 pub fn hlt_loop() -> ! {
