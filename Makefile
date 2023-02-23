@@ -37,12 +37,14 @@ QEMU_CMD += \
 	-serial stdio -s -display none
 endif
 
+.PHONY: bootloader build qcow2 emu debug clean
+
 bootloader:
 ifeq ($(ARCH), x86_64)
 	cd ${RBOOT_DIR} && make build
 endif
 	
-build: ${KERNEL} bootloader
+build: bootloader
 	cargo build $(CARGO_FLAGS)
 	objdump --demangle -d ${KERNEL} > ${KERNEL}.asm
 ifeq ($(ARCH), x86_64)
@@ -52,16 +54,22 @@ ifeq ($(ARCH), x86_64)
 	cp $(KERNEL) $(ESP)/EFI/Demo/kernel.elf
 endif
 
-emu: build
+qcow2:
+ifeq ($(wildcard disk.qcow2),)
+	dd if=/dev/zero of=disk.img bs=4096 count=92160 2>/dev/null
+	mkfs.fat -F 32 disk.img
+	qemu-img convert -f raw disk.img -O qcow2 disk.qcow2
+	qemu-img resize disk.qcow2 +1G
+endif
+
+emu: build qcow2
 	${QEMU_CMD}
 
 debug: build
 	${QEMU_CMD} -S
 
-bootloader: $(kernel)
-ifeq ($(ARCH), x86_64)
-	@cd rboot && make build
-endif
-
 clean:
-	-cargo clean
+ifeq ($(ARCH), x86_64)
+	cd ${RBOOT_DIR} && cargo clean
+endif
+	cargo clean

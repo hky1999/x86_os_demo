@@ -35,17 +35,24 @@ pub extern "C" fn _start(boot_info: &'static BootInfo) -> ! {
         PHYSICAL_MEMORY_OFFSET
     );
 
-    println!("memory_map: size {}", boot_info.memory_map.len());
-
-    use rboot::MemoryType;
-    for region in boot_info.memory_map.iter() {
-        println!(
-            "type {:#?} p 0x{} v 0x{} c {}",
-            region.ty, region.phys_start, region.virt_start, region.page_count
-        );
-    }
+    dump_boot_info_memory_layout(boot_info);
 
     crate::loader_main();
+}
+
+pub fn dump_boot_info_memory_layout(boot_info: &'static BootInfo) {
+    println!("Dump boot_info memory layout:");
+    for (idx, m) in boot_info.memory_map.into_iter().enumerate() {
+        println!(
+            "[{:>2}] [{:#x}-{:#x}] {:?} {:#x} {}",
+            idx,
+            m.phys_start,
+            m.phys_start + m.page_count * 0x1000,
+            m.ty,
+            m.page_count * 0x1000,
+            m.page_count
+        );
+    }
 }
 
 pub fn hlt_loop() -> ! {
